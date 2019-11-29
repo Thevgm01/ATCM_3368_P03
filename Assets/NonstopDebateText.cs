@@ -2,15 +2,26 @@
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using System;
+
+//public enum characters { MAKOTO_NAEGI, SAYAKA_MAIZONO, KIYOTAKA_ISHIMARU, JUNKO_ENOSHIMA, SAKURA_OGAMI, KYOKO_KIRIGIRI, MONDO_OWADA, AOI_ASAHINA, YASUHIRO_HAGAKURE, CHIHIRO_FUJISAKI, BYAKUYA_TOGAMI, CELESTIA_LUDENBERG, LEON_KUWATA, TOKO_FUKAWA, HIFUMI_YAMADA }
+public enum Character { MAKOTO, SAYAKA, TAKA, JUNKO, SAKURA, KYOKO, MONDO, HINA, HIRO, CHIHIRO, BYAKUYA, CELESTE, LEON, TOKO, HIFUMI }
 
 public class NonstopDebateText : MonoBehaviour
 {
-    public Vector3 prePosition,
-                   preRotation,
-                   startPosition,
-                   startRotation,
+    public Character speaker;
+
+    public event Action Finished = delegate { };
+
+    public Vector3 prePositionRelative,
+                   preRotationRelative,
                    forceOverTime,
                    rotationOverTime;
+    Vector3 mainPosition,
+            mainRotation;
+
+    public float shakeMagnitude;
+    float lastShakeX, lastShakeY;
 
     public float preDuration,
                  duration,
@@ -21,37 +32,75 @@ public class NonstopDebateText : MonoBehaviour
     TextMeshPro[] textMeshes;
 
     // Start is called before the first frame update
-    void Start()
+    void Awake()
     {
+        int a = (int)Character.MAKOTO;
+        mainPosition = transform.localPosition;
+        mainRotation = transform.localRotation.eulerAngles;
         textMeshes = GetComponentsInChildren<TextMeshPro>();
-
         duration += preDuration;
+    }
+
+    public void OnEnable()
+    {
+        awakeTimer = 0f;
+        SetAlpha(0f);
     }
 
     // Update is called once per frame
     void Update()
     {
-        if(awakeTimer < preDuration)
+        Vector3 position = mainPosition;
+        Vector3 rotation = mainRotation;
+
+        if (awakeTimer < preDuration)
         {
             float fraction = awakeTimer / preDuration;
-            transform.localPosition = Vector3.Lerp(prePosition, startPosition, fraction);
-            transform.localRotation = Quaternion.Euler(Vector3.Lerp(preRotation, startRotation, fraction));
-            foreach(var tm in textMeshes)
-                tm.alpha = fraction;
+            position += prePositionRelative * (1f - fraction);
+            rotation += preRotationRelative * (1f - fraction);
+            SetAlpha(fraction);
         }
-        else if(awakeTimer < duration)
+        else if(awakeTimer > duration)
         {
-            transform.localPosition = startPosition - forceOverTime * (awakeTimer - preDuration);
-            transform.localRotation = Quaternion.Euler(startRotation - rotationOverTime * (awakeTimer - preDuration));
+            Finished?.Invoke();
+
+            float fraction = 1f - (awakeTimer - duration) / postDuration;
+
+            if (fraction < 0f)
+            {
+                gameObject.SetActive(false);
+                return;
+            }
+
+            SetAlpha(fraction);
+        }
+        else
+        {
+            SetAlpha(1);
         }
 
-        if(awakeTimer > duration)
+        if (shakeMagnitude > 0f)
         {
-            float fraction = 1.0f - (awakeTimer - duration) / postDuration;
-            foreach (var tm in textMeshes)
-                tm.alpha = fraction;
+            float randomX = UnityEngine.Random.Range(-shakeMagnitude, shakeMagnitude);
+            float randomY = UnityEngine.Random.Range(-shakeMagnitude, shakeMagnitude);
+            position.x += (lastShakeX + randomX) / 2f;
+            position.y += (lastShakeY + randomY) / 2f;
+            lastShakeX = randomX;
+            lastShakeY = randomY;
         }
+
+        position += forceOverTime * (awakeTimer);
+        rotation += rotationOverTime * (awakeTimer);
+
+        transform.localPosition = position;
+        transform.localRotation = Quaternion.Euler(rotation);
 
         awakeTimer += Time.deltaTime;
+    }
+
+    private void SetAlpha(float a)
+    {
+        foreach (var tm in textMeshes)
+            tm.alpha = a;
     }
 }
