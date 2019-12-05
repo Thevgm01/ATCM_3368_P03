@@ -21,7 +21,16 @@ public class CharacterSpawner : MonoBehaviour
                     if (child.name == "PlaceToStand") {
                         GameObject newChar = Instantiate(characterObject, child);
                         foreach(Transform sprite in newChar.transform) {
-                            sprite.GetComponent<MeshRenderer>().material = characterMats[i];
+                            if (sprite.name == "Front")
+                            {
+                                sprite.GetComponent<Renderer>().sharedMaterial = characterMats[i];
+                            }
+                            else if (sprite.name == "Back")
+                            {
+                                Material mat = new Material(characterMats[i]);
+                                mat.color = Color.black;
+                                sprite.GetComponent<Renderer>().sharedMaterial = mat;
+                            }
                         }
                         characters.Add(newChar);
                         i++;
